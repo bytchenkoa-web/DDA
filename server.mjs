@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import { installLoadDocument } from "./load-document.mjs";
 
 dotenv.config();
 
@@ -27,6 +28,8 @@ if (!process.env.OPENAI_API_KEY) {
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+installLoadDocument(app, client);
 
 const modeInstructions = {
   "Fix Grammar": `
@@ -149,6 +152,11 @@ app.post("/rewrite", async (req, res) => {
         "Unable to rewrite text. Please try again.",
     });
   }
+});
+
+app.use((error, _req, res, _next) => {
+  if (error.type === "entity.too.large") return res.status(413).json({error: "PDF is too large. Maximum size is 8 MB."});
+  return res.status(400).json({error: "Invalid request body."});
 });
 
 const server = app.listen(PORT, HOST, () => {
